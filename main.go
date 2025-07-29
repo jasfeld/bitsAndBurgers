@@ -2,6 +2,8 @@ package main
 
 import (
 	"embed"
+	"game/rect"
+	"game/timer"
 	"image"
 	_ "image/png"
 	"io/fs"
@@ -41,7 +43,7 @@ type Player struct {
 type Game struct {
 	player               *Player
 	meteoriten           []*Meteorit
-	meteoritenSpawnTimer *Timer
+	meteoritenSpawnTimer *timer.Timer
 }
 
 func NewPlayer() *Player {
@@ -114,7 +116,7 @@ func (g *Game) Update() error {
 
 	for _, m := range g.meteoriten {
 		m.Update()
-		if m.KollisionsRechteck().istKollidiert(g.player.KollisionsRechteck()) {
+		if m.KollisionsRechteck().IstKollidiert(g.player.KollisionsRechteck()) {
 			// Handle collision with player
 			g.GameOver()
 		}
@@ -148,9 +150,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 }
 
-func (p *Player) KollisionsRechteck() Rect {
+func (p *Player) KollisionsRechteck() rect.Rect {
 	bounds := p.bild.Bounds()
-	return NewRect(
+	return rect.NewRect(
 		p.position.X,
 		p.position.Y,
 		float64(bounds.Dx()),
@@ -158,9 +160,9 @@ func (p *Player) KollisionsRechteck() Rect {
 	)
 }
 
-func (m *Meteorit) KollisionsRechteck() Rect {
+func (m *Meteorit) KollisionsRechteck() rect.Rect {
 	bounds := m.bild.Bounds()
-	return NewRect(
+	return rect.NewRect(
 		m.position.X,
 		m.position.Y,
 		float64(bounds.Dx()),
@@ -174,7 +176,7 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 
 func main() {
 	g := &Game{
-		meteoritenSpawnTimer: NewTimer(2 * time.Second), // Spawn meteoriten every 2 seconds
+		meteoritenSpawnTimer: timer.NewTimer(2 * time.Second), // Spawn meteoriten every 2 seconds
 		player:               NewPlayer(),
 	}
 

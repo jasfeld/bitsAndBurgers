@@ -1,4 +1,4 @@
-package main
+package rect
 
 type Rect struct {
 	X      float64
@@ -24,7 +24,7 @@ func (r Rect) MaxY() float64 {
 	return r.Y + r.Height
 }
 
-func (r Rect) istKollidiert(other Rect) bool {
+func (r Rect) IstKollidiert(other Rect) bool {
 	return r.X <= other.MaxX() &&
 		other.X <= r.MaxX() &&
 		r.Y <= other.MaxY() &&
