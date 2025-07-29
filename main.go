@@ -1,12 +1,8 @@
 package main
 
 import (
-	"embed"
-	"game/rect"
-	"game/timer"
-	"image"
+	"game/util"
 	_ "image/png"
-	"io/fs"
 	"math/rand"
 	"time"
 
@@ -18,32 +14,26 @@ const (
 	Spielhoehe  = 600
 )
 
-//go:embed assets/*
-var assets embed.FS
-
-var PlayerBild = mustLoadImage("assets/player.png")
-var MeteoritenBilder = mustLoadImages("assets/meteors/*.png")
-
-type Vector struct {
-	X float64
-	Y float64
-}
+var PlayerBild = util.MustLoadImage("assets/player.png")
+var MeteoritenBilder = util.MustLoadImages("assets/meteors/*.png")
 
 type Meteorit struct {
 	bild     *ebiten.Image
-	position Vector
-	bewegung Vector
+	position util.Vector
+	bewegung util.Vector
 }
 
 type Player struct {
-	bild     *ebiten.Image
-	position Vector
+	bild          *ebiten.Image
+	position      util.Vector
+	shootCooldown *util.Timer
+	lasers        []*util.Laser
 }
 
 type Game struct {
 	player               *Player
 	meteoriten           []*Meteorit
-	meteoritenSpawnTimer *timer.Timer
+	meteoritenSpawnTimer *util.Timer
 }
 
 func NewPlayer() *Player {
@@ -52,25 +42,26 @@ func NewPlayer() *Player {
 	halbeBreite := float64(grenzen.Dx()) / 2
 	halbeHoehe := float64(grenzen.Dy()) / 2
 
-	pos := Vector{
+	pos := util.Vector{
 		X: Spielbreite/2 - halbeBreite,
 		Y: Spielhoehe/2 - halbeHoehe,
 	}
 
 	return &Player{
-		position: pos,
-		bild:     PlayerBild,
+		position:      pos,
+		bild:          PlayerBild,
+		shootCooldown: util.NewTimer(1 * time.Second),
 	}
 }
 
 func NewMeteorit() *Meteorit {
 	return &Meteorit{
 		bild: MeteoritenBilder[rand.Intn(len(MeteoritenBilder))],
-		position: Vector{
+		position: util.Vector{
 			X: float64(rand.Intn(Spielbreite)),
 			Y: 0,
 		},
-		bewegung: Vector{
+		bewegung: util.Vector{
 			X: 0,
 			Y: float64(rand.Intn(3) + 1), // Random speed between 1 and 3
 		},
@@ -102,6 +93,13 @@ func (p *Player) Update() error {
 	if ebiten.IsKeyPressed(ebiten.KeyRight) {
 		p.position.X += geschwindigkeit
 	}
+
+	p.shootCooldown.Update()
+	if p.shootCooldown.IsReady() && ebiten.IsKeyPressed(ebiten.KeySpace) {
+		p.shootCooldown.Reset()
+		p.lasers = append(p.lasers, util.NewLaser(p.position, p.bild.Bounds()))
+	}
+
 	return nil
 }
 
@@ -114,11 +112,21 @@ func (g *Game) Update() error {
 		g.meteoriten = append(g.meteoriten, NewMeteorit())
 	}
 
+	for _, laser := range g.player.lasers {
+		laser.Update()
+	}
+
 	for _, m := range g.meteoriten {
 		m.Update()
 		if m.KollisionsRechteck().IstKollidiert(g.player.KollisionsRechteck()) {
 			// Handle collision with player
 			g.GameOver()
+		}
+		for _, laser := range g.player.lasers {
+			if m.KollisionsRechteck().IstKollidiert(laser.KollisionsRechteck()) {
+				// Remove the meteorite and the laser
+				g.meteoriten = append(g.meteoriten[:0], g.meteoriten[1:]...) // Remove the first meteorite
+			}
 		}
 	}
 
@@ -145,14 +153,18 @@ func (p *Player) Draw(screen *ebiten.Image) {
 func (g *Game) Draw(screen *ebiten.Image) {
 	g.player.Draw(screen)
 
+	for _, laser := range g.player.lasers {
+		laser.Draw(screen)
+	}
+
 	for _, m := range g.meteoriten {
 		m.Draw(screen)
 	}
 }
 
-func (p *Player) KollisionsRechteck() rect.Rect {
+func (p *Player) KollisionsRechteck() util.Rect {
 	bounds := p.bild.Bounds()
-	return rect.NewRect(
+	return util.NewRect(
 		p.position.X,
 		p.position.Y,
 		float64(bounds.Dx()),
@@ -160,9 +172,9 @@ func (p *Player) KollisionsRechteck() rect.Rect {
 	)
 }
 
-func (m *Meteorit) KollisionsRechteck() rect.Rect {
+func (m *Meteorit) KollisionsRechteck() util.Rect {
 	bounds := m.bild.Bounds()
-	return rect.NewRect(
+	return util.NewRect(
 		m.position.X,
 		m.position.Y,
 		float64(bounds.Dx()),
@@ -176,7 +188,7 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 
 func main() {
 	g := &Game{
-		meteoritenSpawnTimer: timer.NewTimer(2 * time.Second), // Spawn meteoriten every 2 seconds
+		meteoritenSpawnTimer: util.NewTimer(2 * time.Second), // Spawn meteoriten every 2 seconds
 		player:               NewPlayer(),
 	}
 
@@ -184,33 +196,4 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-}
-
-func mustLoadImage(name string) *ebiten.Image {
-	f, err := assets.Open(name)
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-
-	img, _, err := image.Decode(f)
-	if err != nil {
-		panic(err)
-	}
-
-	return ebiten.NewImageFromImage(img)
-}
-
-func mustLoadImages(path string) []*ebiten.Image {
-	matches, err := fs.Glob(assets, path)
-	if err != nil {
-		panic(err)
-	}
-
-	images := make([]*ebiten.Image, len(matches))
-	for i, match := range matches {
-		images[i] = mustLoadImage(match)
-	}
-
-	return images
 }
