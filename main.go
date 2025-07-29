@@ -2,7 +2,6 @@ package main
 
 import (
 	"embed"
-	"game/rect"
 	"game/timer"
 	"image"
 	_ "image/png"
@@ -78,14 +77,8 @@ func NewMeteorit() *Meteorit {
 }
 
 func (m *Meteorit) Update() {
-	// Update meteorite position based on its bewegung vector
 	m.position.X += m.bewegung.X
 	m.position.Y += m.bewegung.Y
-
-	// Check if the meteorite is off-screen and remove it if necessary
-	if m.position.Y > Spielhoehe {
-		// Remove logic can be added here if needed
-	}
 }
 
 func (p *Player) Update() error {
@@ -116,10 +109,6 @@ func (g *Game) Update() error {
 
 	for _, m := range g.meteoriten {
 		m.Update()
-		if m.KollisionsRechteck().IstKollidiert(g.player.KollisionsRechteck()) {
-			// Handle collision with player
-			g.GameOver()
-		}
 	}
 
 	return nil
@@ -148,26 +137,6 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	for _, m := range g.meteoriten {
 		m.Draw(screen)
 	}
-}
-
-func (p *Player) KollisionsRechteck() rect.Rect {
-	bounds := p.bild.Bounds()
-	return rect.NewRect(
-		p.position.X,
-		p.position.Y,
-		float64(bounds.Dx()),
-		float64(bounds.Dy()),
-	)
-}
-
-func (m *Meteorit) KollisionsRechteck() rect.Rect {
-	bounds := m.bild.Bounds()
-	return rect.NewRect(
-		m.position.X,
-		m.position.Y,
-		float64(bounds.Dx()),
-		float64(bounds.Dy()),
-	)
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
