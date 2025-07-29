@@ -35,14 +35,40 @@ type Game struct {
 }
 
 func (g *Game) Update() error {
-	return nil
+	return g.player.Update()
 }
 
 func NewPlayer() *Player {
+	grenzen := PlayerBild.Bounds()
+	halbeBreite := float64(grenzen.Dx()) / 2
+	halbeHoehe := float64(grenzen.Dy()) / 2
+
+	pos := Vector{
+		X: Spielbreite/2 - halbeBreite,
+		Y: Spielhoehe/2 - halbeHoehe,
+	}
+
 	return &Player{
-		position: Vector{X: 100, Y: 100},
+		position: pos,
 		bild:     PlayerBild,
 	}
+}
+
+func (p *Player) Update() error {
+	geschwindigkeit := 5.0
+	if ebiten.IsKeyPressed(ebiten.KeyDown) {
+		p.position.Y += geschwindigkeit
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyUp) {
+		p.position.Y -= geschwindigkeit
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
+		p.position.X -= geschwindigkeit
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyRight) {
+		p.position.X += geschwindigkeit
+	}
+	return nil
 }
 
 func (p *Player) Draw(screen *ebiten.Image) {
