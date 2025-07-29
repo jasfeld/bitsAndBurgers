@@ -1,4 +1,4 @@
-package main
+package util
 
 type Rect struct {
 	X      float64
